@@ -1,0 +1,2 @@
+[console_scripts]
+parakeet-qa = parakeet_qa.cli:cli

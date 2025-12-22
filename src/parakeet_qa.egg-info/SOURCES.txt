@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+src/parakeet_qa/__init__.py
+src/parakeet_qa/audio_capture.py
+src/parakeet_qa/buffer.py
+src/parakeet_qa/cli.py
+src/parakeet_qa/config.py
+src/parakeet_qa/display.py
+src/parakeet_qa/ollama_client.py
+src/parakeet_qa/question_detector.py
+src/parakeet_qa/transcriber.py
+src/parakeet_qa.egg-info/PKG-INFO
+src/parakeet_qa.egg-info/SOURCES.txt
+src/parakeet_qa.egg-info/dependency_links.txt
+src/parakeet_qa.egg-info/entry_points.txt
+src/parakeet_qa.egg-info/requires.txt
+src/parakeet_qa.egg-info/top_level.txt

@@ -1,0 +1,100 @@
+# Parakeet Question Answerer
+
+Real-time question detection and answering using NVIDIA Parakeet TDT for speech recognition and Ollama for LLM responses.
+
+## Requirements
+
+- Python 3.10+
+- NVIDIA GPU with CUDA support (recommended, CPU fallback available)
+- PulseAudio or PipeWire (for system audio capture)
+- Ollama running locally
+
+## Installation
+
+```bash
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# Install the package
+pip install -e .
+```
+
+Or simply run `./start.sh` which handles everything automatically.
+
+## Usage
+
+### Quick Start
+
+```bash
+./start.sh --model llama3.1:8b
+```
+
+### Commands
+
+```bash
+# Start listening
+parakeet-qa listen
+
+# With options
+parakeet-qa listen --model llama3.1:8b --show-transcription
+
+# List available Ollama models
+parakeet-qa models
+
+# List available audio devices
+parakeet-qa devices
+
+# Check connectivity
+parakeet-qa check
+```
+
+### Interactive Controls
+
+While running:
+- `q` - Show detected questions and select one to answer
+- `c` - Clear question buffer
+- `t` - Toggle live transcription display
+- `h` - Show help
+- `Ctrl+C` - Exit
+
+## Configuration
+
+Create `~/.config/parakeet-qa/config.yaml`:
+
+```yaml
+ollama:
+  host: http://localhost:11434
+  model: llama3.1:8b
+
+parakeet:
+  model: nvidia/parakeet-tdt-0.6b-v2
+  audio_device: null  # auto-detect
+
+buffers:
+  question_size: 20
+  context_size: 50
+
+display:
+  show_transcription: false
+```
+
+## CLI Options
+
+```
+--config, -c          Config file path
+--model, -m           Ollama model to use
+--host, -H            Ollama host URL
+--asr-model           Parakeet ASR model
+--audio-device        Audio device to capture from
+--prompt, -p          Custom system prompt file
+--show-transcription  Show live transcription
+```
+
+## How It Works
+
+1. **Audio Capture**: Captures system audio using PulseAudio/PipeWire monitor devices
+2. **Speech Recognition**: NVIDIA Parakeet TDT transcribes audio in real-time
+3. **Question Detection**: Sentences ending with `?` are detected as questions
+4. **Context Building**: All transcribed text is stored for conversation context
+5. **LLM Answering**: Selected questions are answered by Ollama using the conversation context
