@@ -14,6 +14,9 @@ DEFAULT_QUESTION_WORDS = [
     "have", "has", "had"
 ]
 
+# Default prompt file name (looked for in package root directory)
+DEFAULT_PROMPT_FILENAME = "prompt.txt"
+
 
 @dataclass
 class Config:
@@ -122,8 +125,33 @@ class Config:
             self.show_transcription = show_transcription
         return self
 
+    @classmethod
+    def get_package_root(cls) -> Path:
+        """Get the root directory of the package (where pyproject.toml lives)."""
+        # Start from this file's directory and go up to find pyproject.toml
+        current = Path(__file__).parent
+        while current != current.parent:
+            if (current / "pyproject.toml").exists():
+                return current
+            current = current.parent
+        # Fallback to the src parent directory
+        return Path(__file__).parent.parent.parent
+
     def load_prompt(self) -> Optional[str]:
-        """Load custom prompt from file if configured."""
+        """Load custom prompt from file if configured, or from default prompt.txt.
+
+        Priority:
+        1. Explicitly configured prompt_file (via CLI or config)
+        2. Default prompt.txt in the package root directory
+        """
+        # First check for explicitly configured prompt file
         if self.prompt_file and self.prompt_file.exists():
             return self.prompt_file.read_text().strip()
+
+        # If no custom prompt configured, check for default prompt.txt in repo root
+        if self.prompt_file is None:
+            default_prompt_path = self.get_package_root() / DEFAULT_PROMPT_FILENAME
+            if default_prompt_path.exists():
+                return default_prompt_path.read_text().strip()
+
         return None
