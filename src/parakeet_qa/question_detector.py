@@ -18,15 +18,28 @@ class DetectedQuestion:
         return self.text
 
 
+# Imperative words that indicate a request for information (implicit questions)
+DEFAULT_REQUEST_WORDS = [
+    "explain", "describe", "tell", "define", "elaborate", "clarify",
+    "compare", "contrast", "discuss", "outline", "summarize", "list",
+    "give", "show", "demonstrate", "illustrate", "walk", "help"
+]
+
+
 class QuestionDetector:
     """Detects questions in streaming transcription text."""
 
-    def __init__(self, question_words: Optional[list[str]] = None):
+    def __init__(
+        self,
+        question_words: Optional[list[str]] = None,
+        request_words: Optional[list[str]] = None
+    ):
         """
         Initialize the question detector.
 
         Args:
             question_words: List of words that typically start questions.
+            request_words: List of imperative words that indicate information requests.
         """
         default_words = [
             "what", "where", "when", "how", "why", "who", "which",
@@ -35,6 +48,7 @@ class QuestionDetector:
             "have", "has", "had"
         ]
         self.question_words = set(w.lower() for w in (question_words or default_words))
+        self.request_words = set(w.lower() for w in (request_words or DEFAULT_REQUEST_WORDS))
         self._partial_sentence = ""
 
         # Regex for sentence boundary detection
@@ -99,13 +113,13 @@ class QuestionDetector:
 
     def _detect_question(self, sentence: str) -> Optional[DetectedQuestion]:
         """
-        Determine if a sentence is a question.
+        Determine if a sentence is a question or information request.
 
         Args:
             sentence: Complete sentence to analyze.
 
         Returns:
-            DetectedQuestion if it's a question, None otherwise.
+            DetectedQuestion if it's a question or request, None otherwise.
         """
         sentence_clean = sentence.strip()
 
@@ -120,15 +134,25 @@ class QuestionDetector:
                 confidence=1.0
             )
 
-        # Secondary method: starts with question word (lower confidence)
-        # Only use this if sentence is complete (ends with punctuation)
+        # Only check word-based detection if sentence ends with punctuation
         if sentence_clean[-1] in ".!":
             first_word = sentence_clean.split()[0].lower().rstrip(".,!?")
+
+            # Secondary method: starts with question word
             if first_word in self.question_words:
                 return DetectedQuestion(
                     text=sentence_clean,
                     timestamp=time.time(),
                     confidence=0.7
+                )
+
+            # Tertiary method: starts with imperative request word
+            # e.g., "Explain the difference between arrays and linked lists."
+            if first_word in self.request_words:
+                return DetectedQuestion(
+                    text=sentence_clean,
+                    timestamp=time.time(),
+                    confidence=0.8
                 )
 
         return None
