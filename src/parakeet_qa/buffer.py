@@ -8,6 +8,12 @@ from typing import Optional
 
 from .question_detector import DetectedQuestion
 
+# Time window for merging consecutive questions (e.g., "How does X work? And how does Y relate?")
+QUESTION_MERGE_WINDOW = 3.0  # seconds
+
+# Words that indicate a follow-up question
+FOLLOWUP_STARTERS = ["and ", "also ", "what about ", "how about ", "or ", "but "]
+
 
 @dataclass
 class BufferedSentence:
@@ -51,18 +57,39 @@ class TranscriptionBuffer:
         """
         Add a detected question to the question buffer.
 
-        Also adds the question to the context buffer.
+        Also adds the question to the context buffer. Consecutive questions
+        within QUESTION_MERGE_WINDOW that look like follow-ups are merged.
 
         Args:
             question: The detected question to add.
 
         Returns:
-            True if question was added, False if it was a duplicate.
+            True if question was added (or merged), False if it was a duplicate.
         """
         # Avoid duplicate questions (same text within last few entries)
         for existing in list(self._questions)[-5:]:
             if self._is_similar(existing.text, question.text):
                 return False
+
+        # Check if we should merge with the most recent question
+        if self._questions:
+            last_question = self._questions[-1]
+            time_diff = question.timestamp - last_question.timestamp
+
+            # If within merge window and new question looks like a follow-up
+            if time_diff <= QUESTION_MERGE_WINDOW and self._is_followup(question.text):
+                # Merge: combine texts
+                merged_text = f"{last_question.text} {question.text}"
+                merged_question = DetectedQuestion(
+                    text=merged_text,
+                    timestamp=last_question.timestamp,
+                    confidence=min(last_question.confidence, question.confidence)
+                )
+                # Replace the last question with merged version
+                self._questions[-1] = merged_question
+                # Update context too
+                self._update_last_context(merged_text)
+                return True
 
         self._questions.append(question)
         self.add_sentence(question.text, is_question=True)
@@ -72,6 +99,19 @@ class TranscriptionBuffer:
         """Check if two texts are similar using simple character ratio."""
         ratio = SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
         return ratio >= threshold
+
+    def _is_followup(self, text: str) -> bool:
+        """Check if text looks like a follow-up question."""
+        text_lower = text.lower().strip()
+        return any(text_lower.startswith(starter) for starter in FOLLOWUP_STARTERS)
+
+    def _update_last_context(self, new_text: str) -> None:
+        """Update the last question entry in context with merged text."""
+        if self._context:
+            for i in range(len(self._context) - 1, -1, -1):
+                if self._context[i].is_question:
+                    self._context[i].text = new_text
+                    break
 
     def get_questions(self) -> list[DetectedQuestion]:
         """
